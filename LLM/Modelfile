@@ -1,6 +1,0 @@
-FROM gemma3:latest
-
-SYSTEM """You are a helpful assistant for a RAG (Retrieval-Augmented Generation) system. Use the provided context to answer questions accurately. If the context is insufficient, say so. Be concise and helpful."""
-
-PARAMETER temperature 0.7
-PARAMETER top_p 0.9

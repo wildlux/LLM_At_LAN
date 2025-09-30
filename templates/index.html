@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>RAG — ChatGPT Style</title>
+  <title>SDR — ChatGPT Style</title>
   <style>
     :root{
       --bg:#0b1020; --panel:#0f1724; --accent:#10a37f; --muted:#98a0b3; --glass:rgba(255,255,255,0.04);
@@ -14,20 +14,38 @@
     body{background:linear-gradient(180deg,#071021 0%, #07131b 100%);color:#e6eef8;display:flex;flex-direction:column}
 
     /* Header */
-    header{height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid rgba(255,255,255,0.03);backdrop-filter: blur(6px);}
+    header{height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid rgba(255,255,255,0.03);backdrop-filter: blur(6px);position: relative;}
     .brand{display:flex;align-items:center;gap:12px}
     .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#0ee6b7,#0a8bff);display:flex;align-items:center;justify-content:center;font-weight:700;color:#04202a}
     h1{font-size:16px;margin:0}
     .header-actions{display:flex;align-items:center;gap:8px}
     .icon-btn{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 10px;border-radius:10px;cursor:pointer}
     .icon-btn:hover{border-color:rgba(255,255,255,0.08);color:#fff}
+    #btnToggleSidebar {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+    }
 
     /* Layout: two columns only */
     .app{display:flex;flex:1;min-height:0}
 
-    /* Sidebar (collapsible) on the left */
-    .sidebar{width:320px;min-width:260px;padding:16px;background:var(--panel);border-right:1px solid rgba(255,255,255,0.03);overflow:auto;display:flex;flex-direction:column;transition:width .25s ease,padding .25s ease}
-    .sidebar.collapsed{width:0;padding:0;border:0;overflow:hidden}
+     /* Sidebar (collapsible) on the left - hidden by default */
+     .sidebar {
+       width:320px;
+       min-width:260px;
+       padding:16px;
+       background:var(--panel);
+       border-right:1px solid rgba(255,255,255,0.03);
+       overflow:auto;
+       display:flex;
+       flex-direction:column;
+       transition: transform .25s ease;
+       transform: translateX(-100%);
+     }
+     .sidebar.visible {
+       transform: translateX(0);
+     }
 
     .sidebar .top-area{display:flex;flex-direction:column;gap:12px}
     .new-chat{display:block;width:100%;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);color:#dff7f0;text-align:left;font-weight:600;cursor:pointer}
@@ -38,8 +56,44 @@
 
     .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);margin-bottom:12px}
     label{display:block;margin-bottom:6px;color:var(--muted);font-size:13px}
-    select,input[type=file]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#eaf3ff}
-    .small{font-size:13px;color:var(--muted)}
+     select,input[type=file]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#eaf3ff}
+     .small{font-size:13px;color:var(--muted)}
+
+     /* Drag and drop zone */
+     .drop-zone {
+       width:100%;
+       min-height:80px;
+       border:2px dashed rgba(255,255,255,0.1);
+       border-radius:8px;
+       background:rgba(255,255,255,0.02);
+       display:flex;
+       align-items:center;
+       justify-content:center;
+       cursor:pointer;
+       transition:all 0.3s ease;
+       position:relative;
+     }
+     .drop-zone:hover {
+       border-color:var(--accent);
+       background:rgba(16, 163, 127, 0.05);
+     }
+     .drop-zone.dragover {
+       border-color:var(--accent);
+       background:rgba(16, 163, 127, 0.1);
+     }
+     .drop-zone-content {
+       text-align:center;
+       padding:10px;
+     }
+     .drop-icon {
+       font-size:24px;
+       display:block;
+       margin-bottom:8px;
+     }
+     .drop-text {
+       color:var(--muted);
+       font-size:12px;
+     }
 
     /* place license at the bottom of the sidebar */
     .sidebar-footer{margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,0.02);font-size:13px;color:var(--muted)}
@@ -76,9 +130,11 @@
   <header>
     <div class="brand">
       <div class="logo">R</div>
-      <h1>RAG — Chat</h1>
+      <h1>SDR — Chat</h1>
     </div>
     <div class="header-actions">
+      <button class="icon-btn" onclick="setLanguage('it')">🇮🇹</button>
+      <button class="icon-btn" onclick="setLanguage('en')">🇬🇧</button>
       <button class="icon-btn" id="btnToggleSidebar">☰</button>
     </div>
   </header>
@@ -92,10 +148,16 @@
           <div class="conv" onclick="selectConv(0)"><div class="title">Benvenuto</div></div>
         </div>
 
-        <div class="panel">
-          <div class="small">Carica file</div>
-          <input type="file" id="fileInput" onchange="uploadFile()">
-        </div>
+         <div class="panel">
+           <div class="small">Carica file (trascina qui)</div>
+           <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+             <input type="file" id="fileInput" onchange="uploadFile()" style="display:none">
+             <div class="drop-zone-content">
+               <span class="drop-icon">📁</span>
+               <span class="drop-text">Trascina file qui o clicca per selezionare</span>
+             </div>
+           </div>
+         </div>
 
         <div class="panel">
           <label for="modelSelect">Modello</label>
@@ -128,16 +190,15 @@
     <main class="main">
       <section class="messages" id="messages">
         <div class="msg bot">
-          <strong>RAG</strong>
+          <strong>SDR</strong>
           <div style="margin-top:6px;color:var(--muted)">Benvenuto! Carica un file e inizia a fare domande.</div>
         </div>
       </section>
 
       <div class="composer">
         <div class="tools">
-          <button class="small-btn" id="attachBtn" onclick="document.getElementById('fileInput').click()">📎</button>
+           <button class="small-btn" id="attachBtn" onclick="document.getElementById('dropZone').click()">📎</button>
           <button class="small-btn" id="copyBtn" onclick="copyLastResponse()">Copia</button>
-          <button class="small-btn" id="langToggle" onclick="toggleComposerLanguage()">IT</button>
         </div>
         <input type="text" id="queryInput" placeholder="Scrivi qui..." onkeydown="if(event.key==='Enter'){submitQuery()}" />
         <button class="send" onclick="submitQuery()">Invia</button>
@@ -151,17 +212,13 @@
     let composerLang = 'it';
     const leftSidebar = document.getElementById('leftSidebar');
 
-    // Toggle sidebar collapsed/visible
-    document.getElementById('btnToggleSidebar').addEventListener('click', ()=>{
-      // for wide screens, toggle collapsed class
-      if(window.innerWidth > 980){
-        leftSidebar.classList.toggle('collapsed');
-      } else {
-        leftSidebar.classList.toggle('visible');
-      }
-      // ensure aria-hidden reflects state
-      leftSidebar.setAttribute('aria-hidden', leftSidebar.classList.contains('collapsed') ? 'true' : 'false');
-    });
+     // Toggle sidebar visible/hidden
+     document.getElementById('btnToggleSidebar').addEventListener('click', ()=>{
+       // Toggle visible class for both desktop and mobile
+       leftSidebar.classList.toggle('visible');
+       // ensure aria-hidden reflects state
+       leftSidebar.setAttribute('aria-hidden', leftSidebar.classList.contains('visible') ? 'false' : 'true');
+     });
 
     // Language toggle button next to copy — changes composer default language and selects the sidebar language select
     function toggleComposerLanguage(){
@@ -181,7 +238,7 @@
       for(let i = nodes.length -1; i>=0; i--){
         const n = nodes[i];
         if(n.classList.contains('bot')){
-          const text = n.innerText.replace(/^RAG
+          const text = n.innerText.replace(/^SDR
 ?/, '').trim();
           navigator.clipboard.writeText(text).then(()=>{
             const btn = document.getElementById('copyBtn'); btn.textContent = 'Copiato'; setTimeout(()=>btn.textContent = (composerLang==='it'?'Copia':'Copy'),1500);
@@ -222,14 +279,64 @@
       })
     }
 
-    // Upload file
-    function uploadFile(){
-      const f = document.getElementById('fileInput').files[0]; if(!f) return;
-      const fd = new FormData(); fd.append('file', f);
-      fetch('/upload',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
-        addBotMessage(data.message || data.error || 'File caricato');
-      }).catch(e=>addBotMessage('Errore upload'))
-    }
+     // Upload file
+     function uploadFile(){
+       const f = document.getElementById('fileInput').files[0]; if(!f) return;
+       uploadFileToServer(f);
+     }
+
+     // Drag and drop functionality
+     function setupDragAndDrop(){
+       const dropZone = document.getElementById('dropZone');
+       const fileInput = document.getElementById('fileInput');
+
+       ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+         dropZone.addEventListener(eventName, preventDefaults, false);
+       });
+
+       function preventDefaults(e) {
+         e.preventDefault();
+         e.stopPropagation();
+       }
+
+       ['dragenter', 'dragover'].forEach(eventName => {
+         dropZone.addEventListener(eventName, highlight, false);
+       });
+
+       ['dragleave', 'drop'].forEach(eventName => {
+         dropZone.addEventListener(eventName, unhighlight, false);
+       });
+
+       function highlight(e) {
+         dropZone.classList.add('dragover');
+       }
+
+       function unhighlight(e) {
+         dropZone.classList.remove('dragover');
+       }
+
+       dropZone.addEventListener('drop', handleDrop, false);
+       dropZone.addEventListener('click', () => fileInput.click());
+
+       function handleDrop(e) {
+         const dt = e.dataTransfer;
+         const files = dt.files;
+         if(files.length > 0){
+           fileInput.files = files;
+           uploadFileToServer(files[0]);
+         }
+       }
+     }
+
+     function uploadFileToServer(file){
+       const fd = new FormData();
+       fd.append('file', file);
+       fetch('/upload',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
+         addBotMessage(data.message || data.error || 'File caricato');
+         // Reset drop zone appearance
+         document.getElementById('dropZone').classList.remove('dragover');
+       }).catch(e=>addBotMessage('Errore upload'))
+     }
 
     // Submit query
     function submitQuery(){
@@ -260,11 +367,13 @@
       document.getElementById('messages').appendChild(m); document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     }
 
-    document.addEventListener('DOMContentLoaded', ()=>{ fetchModels();
-      // initialize composer language UI
-      document.getElementById('langToggle').textContent = composerLang==='it' ? 'IT' : 'EN';
-      document.getElementById('copyBtn').textContent = composerLang==='it' ? 'Copia' : 'Copy';
-    });
+     document.addEventListener('DOMContentLoaded', ()=>{ fetchModels();
+       // initialize composer language UI
+       document.getElementById('langToggle').textContent = composerLang==='it' ? 'IT' : 'EN';
+       document.getElementById('copyBtn').textContent = composerLang==='it' ? 'Copia' : 'Copy';
+       // Setup drag and drop
+       setupDragAndDrop();
+     });
   </script>
 </body>
 </html>

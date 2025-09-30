@@ -1,19 +1,31 @@
-#!/bin/bash
+ #!/bin/bash
 
-# Controlla se l'ambiente virtuale esiste
-if [ ! -d "rag_env" ]; then
-    echo "Creazione dell'ambiente virtuale..."
-    python3 -m venv rag_env
-    echo "Installazione delle dipendenze..."
-    . rag_env/bin/activate
-    pip install -q -r requirements.txt
-else
-    echo "Attivazione dell'ambiente virtuale..."
-    . rag_env/bin/activate
-    echo "Installazione delle dipendenze..."
-    pip install -q -r requirements.txt
-fi
+ # System Discovery and Researching Startup Script - Simplified
+ # Activates virtual environment and launches the TUI
 
-# Avvia l'applicazione Flask
-echo "Avvio dell'applicazione Flask..."
-rag_env/bin/python rag_system.py
+ echo "🚀 System Discovery and Researching - LAN Interface"
+ echo "============================"
+ echo ""
+ echo "🎯 Launching TUI..."
+ echo "   The TUI will handle environment setup and server management"
+ echo "   Press 'q' to exit the TUI"
+ echo ""
+
+ # Check if virtual environment exists
+ if [ ! -d "rag_env" ]; then
+     echo "❌ Virtual environment not found. Creating..."
+     python3 -m venv rag_env
+     . rag_env/bin/activate
+     echo "📦 Installing dependencies..."
+     pip install -q -r requirements.txt
+ else
+     echo "✅ Activating virtual environment..."
+     . rag_env/bin/activate
+ fi
+
+ echo ""
+ echo "🚀 Starting TUI..."
+ echo ""
+
+  # Launch the TUI with virtual environment Python
+  exec "$(dirname "$0")/rag_env/bin/python" "$(dirname "$0")/tui.py"
