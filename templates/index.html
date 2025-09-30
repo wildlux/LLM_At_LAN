@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RAG — ChatGPT Style</title>
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#0f1724; --accent:#10a37f; --muted:#98a0b3; --glass:rgba(255,255,255,0.04);
+      --radius:12px; --header-h:64px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;}
+    body{background:linear-gradient(180deg,#071021 0%, #07131b 100%);color:#e6eef8;display:flex;flex-direction:column}
+
+    /* Header */
+    header{height:var(--header-h);display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid rgba(255,255,255,0.03);backdrop-filter: blur(6px);}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#0ee6b7,#0a8bff);display:flex;align-items:center;justify-content:center;font-weight:700;color:#04202a}
+    h1{font-size:16px;margin:0}
+    .header-actions{display:flex;align-items:center;gap:8px}
+    .icon-btn{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);padding:8px 10px;border-radius:10px;cursor:pointer}
+    .icon-btn:hover{border-color:rgba(255,255,255,0.08);color:#fff}
+
+    /* Layout: two columns only */
+    .app{display:flex;flex:1;min-height:0}
+
+    /* Sidebar (collapsible) on the left */
+    .sidebar{width:320px;min-width:260px;padding:16px;background:var(--panel);border-right:1px solid rgba(255,255,255,0.03);overflow:auto;display:flex;flex-direction:column;transition:width .25s ease,padding .25s ease}
+    .sidebar.collapsed{width:0;padding:0;border:0;overflow:hidden}
+
+    .sidebar .top-area{display:flex;flex-direction:column;gap:12px}
+    .new-chat{display:block;width:100%;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.03);color:#dff7f0;text-align:left;font-weight:600;cursor:pointer}
+    .conversations{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+    .conv{padding:10px;border-radius:10px;color:var(--muted);display:flex;gap:10px;align-items:center;cursor:pointer}
+    .conv:hover{background:var(--glass);color:#fff}
+    .conv .title{font-size:13px}
+
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);margin-bottom:12px}
+    label{display:block;margin-bottom:6px;color:var(--muted);font-size:13px}
+    select,input[type=file]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#eaf3ff}
+    .small{font-size:13px;color:var(--muted)}
+
+    /* place license at the bottom of the sidebar */
+    .sidebar-footer{margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,0.02);font-size:13px;color:var(--muted)}
+    .sidebar-footer a{color:var(--accent);text-decoration:none;font-weight:600}
+
+    /* Main chat area */
+    .main{flex:1;display:flex;flex-direction:column;min-width:0}
+    .messages{flex:1;overflow:auto;padding:28px 36px;display:flex;flex-direction:column;gap:12px}
+    .msg{max-width:80%;padding:14px 16px;border-radius:12px;line-height:1.4}
+    .msg.user{align-self:flex-end;background:linear-gradient(180deg,var(--accent),#0c8b6f);color:#042022}
+    .msg.bot{align-self:flex-start;background:#0f1724;border:1px solid rgba(255,255,255,0.03);color:#dfe9f8}
+
+    /* Composer */
+    .composer{padding:14px 18px;border-top:1px solid rgba(255,255,255,0.03);display:flex;gap:12px;align-items:center;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+    .composer input[type=text]{flex:1;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:#eaf3ff}
+    .composer button.send{padding:10px 14px;border-radius:10px;background:var(--accent);border:none;color:#042022;font-weight:700;cursor:pointer}
+    .composer .tools{display:flex;gap:8px}
+    .small-btn{padding:8px 10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted);cursor:pointer}
+    .small-btn:hover{border-color:rgba(255,255,255,0.08);color:#fff}
+
+    /* Responsive: hide sidebar on small screens and use toggle */
+    @media (max-width: 980px){
+      .sidebar{position:absolute;z-index:30;height:100%;left:0;top:var(--header-h);transform:translateX(-100%);transition:transform .25s ease}
+      .sidebar.visible{transform:translateX(0)}
+      .main{margin-left:0}
+    }
+
+    /* scrollbars subtle */
+    .messages::-webkit-scrollbar, .sidebar::-webkit-scrollbar{width:10px}
+    .messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.03);border-radius:10px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">R</div>
+      <h1>RAG — Chat</h1>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="btnToggleSidebar">☰</button>
+    </div>
+  </header>
+
+  <div class="app">
+    <!-- LEFT: collapsible sidebar with settings + conversations + license at bottom -->
+    <aside class="sidebar" id="leftSidebar" aria-hidden="false">
+      <div class="top-area">
+        <button class="new-chat" onclick="newChat()">＋ Nuova Conversazione</button>
+        <div class="conversations" id="conversations">
+          <div class="conv" onclick="selectConv(0)"><div class="title">Benvenuto</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="small">Carica file</div>
+          <input type="file" id="fileInput" onchange="uploadFile()">
+        </div>
+
+        <div class="panel">
+          <label for="modelSelect">Modello</label>
+          <select id="modelSelect"></select>
+        </div>
+
+        <div class="panel">
+          <label for="themeSelect">Tema</label>
+          <select id="themeSelect" onchange="changeTheme()">
+            <option value="dark">Scuro</option>
+            <option value="light">Chiaro</option>
+          </select>
+        </div>
+
+        <div class="panel">
+          <label for="langSelect">Lingua</label>
+          <select id="langSelect">
+            <option value="it">Italiano</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div>Powered by Open Source • <a href="#" id="licenseLink">GPL</a></div>
+      </div>
+    </aside>
+
+    <!-- MAIN: single central chat column -->
+    <main class="main">
+      <section class="messages" id="messages">
+        <div class="msg bot">
+          <strong>RAG</strong>
+          <div style="margin-top:6px;color:var(--muted)">Benvenuto! Carica un file e inizia a fare domande.</div>
+        </div>
+      </section>
+
+      <div class="composer">
+        <div class="tools">
+          <button class="small-btn" id="attachBtn" onclick="document.getElementById('fileInput').click()">📎</button>
+          <button class="small-btn" id="copyBtn" onclick="copyLastResponse()">Copia</button>
+          <button class="small-btn" id="langToggle" onclick="toggleComposerLanguage()">IT</button>
+        </div>
+        <input type="text" id="queryInput" placeholder="Scrivi qui..." onkeydown="if(event.key==='Enter'){submitQuery()}" />
+        <button class="send" onclick="submitQuery()">Invia</button>
+      </div>
+    </main>
+
+  </div>
+
+  <script>
+    // Default language: italian
+    let composerLang = 'it';
+    const leftSidebar = document.getElementById('leftSidebar');
+
+    // Toggle sidebar collapsed/visible
+    document.getElementById('btnToggleSidebar').addEventListener('click', ()=>{
+      // for wide screens, toggle collapsed class
+      if(window.innerWidth > 980){
+        leftSidebar.classList.toggle('collapsed');
+      } else {
+        leftSidebar.classList.toggle('visible');
+      }
+      // ensure aria-hidden reflects state
+      leftSidebar.setAttribute('aria-hidden', leftSidebar.classList.contains('collapsed') ? 'true' : 'false');
+    });
+
+    // Language toggle button next to copy — changes composer default language and selects the sidebar language select
+    function toggleComposerLanguage(){
+      composerLang = composerLang === 'it' ? 'en' : 'it';
+      document.getElementById('langToggle').textContent = composerLang === 'it' ? 'IT' : 'EN';
+      // also sync the sidebar language select if present
+      const sel = document.getElementById('langSelect'); if(sel) sel.value = composerLang;
+      // update placeholder and button labels to reflect language
+      document.getElementById('queryInput').placeholder = composerLang === 'it' ? 'Scrivi qui...' : 'Type your message...';
+    }
+
+    // Copy last bot response to clipboard
+    function copyLastResponse(){
+      const msgs = document.getElementById('messages');
+      const nodes = Array.from(msgs.children).filter(n=>n.classList.contains('msg'));
+      // find last bot message
+      for(let i = nodes.length -1; i>=0; i--){
+        const n = nodes[i];
+        if(n.classList.contains('bot')){
+          const text = n.innerText.replace(/^RAG
+?/, '').trim();
+          navigator.clipboard.writeText(text).then(()=>{
+            const btn = document.getElementById('copyBtn'); btn.textContent = 'Copiato'; setTimeout(()=>btn.textContent = (composerLang==='it'?'Copia':'Copy'),1500);
+          }).catch(()=>{
+            alert('Impossibile copiare');
+          });
+          return;
+        }
+      }
+      alert(composerLang==='it' ? 'Nessuna risposta da copiare' : 'No response to copy');
+    }
+
+    function changeTheme(){
+      const t = document.getElementById('themeSelect').value;
+      if(t==='light'){
+        document.body.style.background = '#f4f7fa'; document.body.style.color='#0b1220';
+      } else {
+        document.body.style.background = 'linear-gradient(180deg,#071021 0%, #07131b 100%)'; document.body.style.color='#e6eef8';
+      }
+    }
+
+    function newChat(){
+      const convs = document.getElementById('conversations');
+      const div = document.createElement('div'); div.className='conv'; div.innerHTML='<div class="title">Nuova conversazione</div>';
+      div.onclick = ()=>selectConv(convs.children.length-1);
+      convs.prepend(div);
+    }
+
+    function selectConv(i){ /* just visual for now */ }
+
+    // Fetch models from backend to populate select
+    function fetchModels(){
+      fetch('/models').then(r=>r.json()).then(data=>{
+        const sel = document.getElementById('modelSelect'); sel.innerHTML='';
+        (data.models || []).forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o)})
+      }).catch(()=>{
+        const sel = document.getElementById('modelSelect'); sel.innerHTML=''; const o=document.createElement('option');o.value='local-model';o.textContent='local-model';sel.appendChild(o)
+      })
+    }
+
+    // Upload file
+    function uploadFile(){
+      const f = document.getElementById('fileInput').files[0]; if(!f) return;
+      const fd = new FormData(); fd.append('file', f);
+      fetch('/upload',{method:'POST',body:fd}).then(r=>r.json()).then(data=>{
+        addBotMessage(data.message || data.error || 'File caricato');
+      }).catch(e=>addBotMessage('Errore upload'))
+    }
+
+    // Submit query
+    function submitQuery(){
+      const q = document.getElementById('queryInput'); const text = q.value.trim(); if(!text) return;
+      addUserMessage(text); q.value='';
+      const model = document.getElementById('modelSelect').value || '';
+      const lang = composerLang || document.getElementById('langSelect').value || 'it';
+      const instruction = (lang==='it')? 'Rispondi in italiano. ' : 'Respond in English. ';
+      const payload = {query:instruction + text, model};
+      addBotMessage('...');
+      fetch('/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+        .then(r=>r.json())
+        .then(data=>{
+          // remove the last "loading" message
+          const msgs = document.getElementById('messages'); const last = Array.from(msgs.children).reverse().find(n=>n.innerText.trim()==='...'); if(last) last.remove();
+          addBotMessage(data.response || data.error || 'Nessuna risposta');
+          msgs.scrollTop = msgs.scrollHeight;
+        }).catch(e=>{addBotMessage('Errore di rete')})
+    }
+
+    function addUserMessage(text){
+      const m = document.createElement('div'); m.className='msg user'; m.textContent = text; document.getElementById('messages').appendChild(m); document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    }
+    function addBotMessage(text){
+      const m = document.createElement('div'); m.className='msg bot';
+      if(typeof text === 'string') m.innerHTML = text.replace(/ 
+/g,'<br>'); else m.textContent = JSON.stringify(text);
+      document.getElementById('messages').appendChild(m); document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{ fetchModels();
+      // initialize composer language UI
+      document.getElementById('langToggle').textContent = composerLang==='it' ? 'IT' : 'EN';
+      document.getElementById('copyBtn').textContent = composerLang==='it' ? 'Copia' : 'Copy';
+    });
+  </script>
+</body>
+</html>
