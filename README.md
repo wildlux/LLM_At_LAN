@@ -34,6 +34,7 @@ Questo repository fornisce un ambiente di base per avviare rapidamente progetti 
 - **Flessibile**: Adatto per Flask o Django con modifiche minime.
 - **Risparmio di tempo**: Evita la configurazione manuale iniziale.
 - **Usabile su server headless**: Funziona perfettamente su configurazioni server senza Desktop Environment, grazie all'interfaccia TUI terminale.
+- **Meno costi di gestione**: Riduce i costi operativi utilizzando risorse minime e server headless.
 
 ## Requisiti
 
