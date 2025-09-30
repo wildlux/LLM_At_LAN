@@ -6,7 +6,6 @@ Main entry point for SDR System
 
 import os
 import sys
-import subprocess
 from pathlib import Path
 
 def main():
